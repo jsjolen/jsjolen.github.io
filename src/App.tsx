@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Route,
   Link,
@@ -12,6 +12,9 @@ import './pure.css';
 
 
 function App() {
+  useEffect(() => {
+    document.title = 'A page.';
+  });
   return (
     <HashRouter>
       <ul className="pure-menu-horizontal">
