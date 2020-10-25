@@ -15,5 +15,15 @@
     word-wrap: break-word;
     margin-left: auto;
     margin-right: auto;
-    width: 32em;
+    width: 40em;
+}
+
+.center {
+  margin: auto;
+  width: 50%;
+  padding: 2em;
+}
+
+ul {
+    list-style-type: '- ';
 }
