@@ -1,4 +1,5 @@
 import React from 'react';
+import './pure.css';
 
 export function Home() {
   return (
@@ -6,8 +7,6 @@ export function Home() {
       <header>
         <h1>Johan Sjölén - johan.borglin.sjolen@gmail.com</h1>
       </header>
-      <p><a href="/relsymwasm">MSc thesis: Relational symbolic execution in WebAssembly</a></p>
-      <p><a href={process.env.PUBLIC_URL+"/cv.pdf"}>CV (PDF)</a></p>
     </div>
   );
 }
