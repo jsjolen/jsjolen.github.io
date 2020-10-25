@@ -13,8 +13,8 @@ function App() {
   return (
     <BrowserRouter>
       <Switch>
-        <Route exact path="/relsymwasm" component={RelSymWasm}/>
-      <Route exact path="/" component={Home}/>
+       <Route exact path="/relsymwasm" component={RelSymWasm}/>
+       <Route exact path="/" component={Home}/>
       </Switch>
     </BrowserRouter>
   );
