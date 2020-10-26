@@ -9,6 +9,7 @@ import {
 import { RelSymWasm } from './RelSymWasm';
 import { BSc } from './BSc';
 import { Home } from './Home';
+import { JMM } from './JMM';
 import './pure.css';
 
 function App() {
@@ -20,11 +21,13 @@ function App() {
       <ul className="pure-menu-horizontal">
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/">Home</Link></li>
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/relsymwasm">MSc thesis</Link></li>
-        <li className="pure-menu-item"><Link className="pure-menu-link" to="/bsc">BSc thesis</Link></li>H
+        <li className="pure-menu-item"><Link className="pure-menu-link" to="/bsc">BSc thesis</Link></li>
+        <li className="pure-menu-item"><Link className="pure-menu-link" to="/jmm">JMM</Link></li>
       </ul>
       <Switch>
        <Route exact path="/relsymwasm" component={RelSymWasm}/>
        <Route exact path="/bsc" component={BSc}/>
+       <Route exact path="/jmm" component={JMM}/>
        <Route exact path="/" component={Home}/>
       </Switch>
     </HashRouter>
