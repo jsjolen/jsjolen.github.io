@@ -4,6 +4,7 @@ import { Grammars, IToken } from 'ebnf';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
+// TODO: Add thread-local variables
 const TLangGrammar =
 `
 Program     ::= WS* VarDecl* WS* Thread* WS*
@@ -90,6 +91,7 @@ interface TLangToken extends IToken {
 }
 
 
+// TODO: Currently each thread runs in order, fix this!
 function computeProgramOrder(node: IToken, prev: PONode): PONode {
   switch(node.type as TLangAstType) {
     case 'Program': {
