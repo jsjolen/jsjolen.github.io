@@ -260,29 +260,6 @@ export function Grammar() {
   return <p className="centered-limited">{TLangGrammar}</p>;
 }
 
-/**
-
-export const Form: FunctionComponent<IProps> = ({ onFinish, initState }) => {
-  const formInputsStateRef = useRef({})
-
-  const handleFinish = () => {
-    const params = formInputsStateRef.current
-    console.log(params)
-    onFinish(params)
-  }
-
-  return (
-    <div>
-      <Inputs initState={initState} stateRef={formInputsStateRef}  />
-      <S.Button onClick={handleFinish}>
-        Finish
-      </S.Button>
-    </div>
-  )
-}
-
-**/
-
 function Program(props: {children: ReactNode}) {
   return <p className="centered-limited"> {props.children} </p>;
 }
