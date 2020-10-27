@@ -6,6 +6,7 @@
   "dependencies": {
     "ebnf": "^1.9.0",
     "file-loader": "^6.1.1",
+    "graphviz-react": "^1.1.1",
     "history": "^5.0.0",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",

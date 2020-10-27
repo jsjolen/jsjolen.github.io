@@ -1,30 +1,32 @@
-import React from 'react';
+import React, { useState, FunctionComponent, ReactNode } from 'react';
 import { Grammars, IToken } from 'ebnf';
+import { Graphviz } from 'graphviz-react';
 
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
-// TODO: Add thread-local variables
 const TLangGrammar =
 `
-Program     ::= WS* VarDecl* WS* Thread* WS*
-Thread      ::= WS* "thread " WS* Var WS* "{" WS* Stmt* WS* "}" WS*
-VarDecl     ::= ("volatile int"|"int") WS* Var " = " Expr ";" WS* | "lock" WS* Var ";" WS*
+Program         ::= WS* VarDecl* WS* Thread* WS*
+Thread          ::= WS* "thread " WS* Var WS* "{" WS* Stmt* WS* "}" WS*
+VarDecl         ::= IntDecl | VolatileIntDecl | LockDecl
+IntDecl         ::= "int" WS* Var " = " Expr ";" WS*
+VolatileIntDecl ::= "volatile int" WS* Var " = " Expr ";" WS*
+LockDecl        ::= "lock" WS* Var ";" WS*
+Stmt            ::= (IfStmt | AssStmt | LockStmt | UnlockStmt)
+IfStmt          ::= WS* "if" WS* "(" WS* CmpExpr WS* ")" WS* "{" WS* Stmt* WS* "}" WS* "else" WS* "{" WS* Stmt* WS* "}" WS*
+AssStmt         ::= Var " = " Expr ";" WS*
+LockStmt        ::= Var ".lock()" ";" WS*
+UnlockStmt      ::= Var ".unlock()" ";" WS*
 
-Stmt        ::= (IfStmt | AssStmt | LockStmt | UnlockStmt)
-IfStmt      ::= WS* "if" WS* "(" WS* CmpExpr WS* ")" WS* "{" WS* Stmt* WS* "}" WS* "else" WS* "{" WS* Stmt* WS* "}" WS*
-AssStmt     ::= Var " = " Expr ";" WS*
-LockStmt    ::= Var ".lock()" ";" WS*
-UnlockStmt  ::= Var ".unlock()" ";" WS*
+Expr            ::= Var | Value | CmpExpr | AddExpr
+AddExpr         ::= Expr "+" Expr
+CmpExpr         ::= Expr "==" Expr | Expr ">" Expr
+Var             ::= ([a-z]|[A-Z])+
+Value           ::= NUMBER
 
-Expr        ::= Var | Value | CmpExpr | AddExpr
-AddExpr     ::= Expr "+" Expr
-CmpExpr      ::= Expr "==" Expr | Expr ">" Expr
-Var         ::= ([a-z]|[A-Z])+
-Value       ::= NUMBER
-
-NUMBER      ::= "-"? ("0" | [1-9] [0-9]*) ("." [0-9]+)? (("e" | "E") ( "-" | "+" )? ("0" | [1-9] [0-9]*))?
-WS          ::= [#x20#x09#x0A#x0D]+
+NUMBER          ::= "-"? ("0" | [1-9] [0-9]*) ("." [0-9]+)? (("e" | "E") ( "-" | "+" )? ("0" | [1-9] [0-9]*))?
+WS              ::= [#x20#x09#x0A#x0D]+
 `;
 
 type TLangAstType =
@@ -74,6 +76,15 @@ thread A {
        y = 2;
     }
 }
+thread B {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
 `,"Program"));
 
 /*
@@ -90,16 +101,32 @@ interface TLangToken extends IToken {
   type: TLangAstType;
 }
 
-
-// TODO: Currently each thread runs in order, fix this!
 function computeProgramOrder(node: IToken, prev: PONode): PONode {
   switch(node.type as TLangAstType) {
     case 'Program': {
-      return node.children.slice(1).reduce<PONode>((prev, token)  => {
+      const [varDecls, threadDecls] = node.children.reduce<[Array<IToken>,Array<IToken>]>(([varDecls, threadDecls], token)  => {
+	switch(token.type) {
+	    case 'VarDecl': {
+	      varDecls.push(token);
+	      return [varDecls, threadDecls];
+	    }
+	    case 'Thread': {
+	      threadDecls.push(token);
+	      return [varDecls, threadDecls];
+	    }
+	}
+	throw new Error('unreachable');
+      }, [[],[]]);
+      const lastVar = varDecls.reduce<PONode>((prev, token) => {
         const next = computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
-      }, {self: node.children[0], prev, next: []});
+      }, prev);
+      // Attach to each threadDecl
+      threadDecls.forEach((thread) => {
+	lastVar.next.push(computeProgramOrder(thread, lastVar));
+      });
+      return prev; // return start
     }
     case 'Thread': {
       // .slice(1) ignore name
@@ -162,10 +189,64 @@ thread A {
     }
 }
 `,"Program"), {self: 'START', prev: null, next: []}));
+console.log(computeProgramOrder(parser.getAST(`
+volatile int x = 5;
+int y = 6;
+thread A {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+thread B {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+`,"Program"), {self: 'START', prev: null, next: []}));
+
 
 /*
   Render program order.
 */
+
+function Button(props: {text:string, onClick: () => void|Promise<void>}) {
+  const [state, setState] = useState({active:false});
+  return (
+    <button className={state.active ? "pure-button pure-button-primary" : "pure-button pure-button-primary pure-button-active"}
+    onClick={() => {
+      setState({active: !state.active});
+      props.onClick();
+    }}>{props.text}</button>
+  );
+}
+
+function renderProgramOrder(start: PONode) {
+}
+
+function ProgramOrderInput() {
+  const [state, setState] = useState({dot:"", lastRender:"digraph G { a -> b }"});
+  const handleChange = (event: any) => setState({dot: event.target.value, lastRender: state.lastRender});
+  return (
+    <div className="centered-limited" style={{display: "flex", flexDirection:"column"}}>
+      <div style={{display: "flex", flexDirection:"row"}}>
+        <textarea rows={20} cols={20} value={state.dot} onChange={handleChange} />
+        <Graphviz dot={state.lastRender}/>
+      </div>
+      <Button text="Render program order"
+              onClick={() => {
+		setState({dot:state.dot, lastRender:state.dot});
+	      }}/>
+    </div>
+  );
+}
 
 /*
   Synchronization Actions.
@@ -176,7 +257,34 @@ thread A {
 */
 
 export function Grammar() {
-  return <p>TODO</p>;
+  return <p className="centered-limited">{TLangGrammar}</p>;
+}
+
+/**
+
+export const Form: FunctionComponent<IProps> = ({ onFinish, initState }) => {
+  const formInputsStateRef = useRef({})
+
+  const handleFinish = () => {
+    const params = formInputsStateRef.current
+    console.log(params)
+    onFinish(params)
+  }
+
+  return (
+    <div>
+      <Inputs initState={initState} stateRef={formInputsStateRef}  />
+      <S.Button onClick={handleFinish}>
+        Finish
+      </S.Button>
+    </div>
+  )
+}
+
+**/
+
+function Program(props: {children: ReactNode}) {
+  return <p className="centered-limited"> {props.children} </p>;
 }
 
 export function JMM() {
@@ -200,11 +308,33 @@ export function JMM() {
      The abstract grammar for the language is the following.
      </p>
      <Grammar/>
-     <h3 className="centered-limited">Program order</h3>
-    TODO
-    <h3 className="centered-limited">Synchronization actions</h3>
-    TODO
-     <h3 className="centered-limited">Happens Before order</h3>
+    <h3 className="centered-limited">Program order</h3>
+    <ProgramOrderInput/>
+    <h3 className="centered-limited">Inter-thread actions and synchronization actions</h3>
+    <p className="centered-limited">
+    An <i>inter-thread action</i> is something that happens that another thread can detect or influence.
+    Consider the following program
+    </p>
+    <Program>
+    {`int x = 0;
+      thread A {
+        x = 1;
+      }
+      thread B {
+        if(x == 0) {
+        } else {
+  	// We detected a change
+        }
+     }`}
+  </Program>
+    <p className="centered-limited">
+    Here thread A produces a write event and thread B produces a read event.
+    On top of regular actions there are also synchronization actions.
+    What follows is a list of the actions we will consider, then we will consider synchronization order.
+    </p>
+    
+    <h3 className="centered-limited">Synchronization order</h3>
+    <h3 className="centered-limited">Happens Before order</h3>
     TODO
      </div>
   );
