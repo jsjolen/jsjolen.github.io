@@ -8,13 +8,13 @@ import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 const TLangGrammar =
 `
 Program         ::= WS* VarDecl* WS* Thread* WS*
-Thread          ::= WS* "thread " WS* Var WS* "{" WS* Stmt* WS* "}" WS*
+Thread          ::= WS* "thread " WS* Var WS* "{" WS* (IfStmt | AssStmt | LockStmt | UnlockStmt)* WS* "}" WS*
 VarDecl         ::= IntDecl | VolatileIntDecl | LockDecl
 IntDecl         ::= "int" WS* Var " = " Expr ";" WS*
 VolatileIntDecl ::= "volatile int" WS* Var " = " Expr ";" WS*
 LockDecl        ::= "lock" WS* Var ";" WS*
-Stmt            ::= (IfStmt | AssStmt | LockStmt | UnlockStmt)
-IfStmt          ::= WS* "if" WS* "(" WS* CmpExpr WS* ")" WS* "{" WS* Stmt* WS* "}" WS* "else" WS* "{" WS* Stmt* WS* "}" WS*
+IfStmt          ::= WS* "if" WS* "(" WS* CmpExpr WS* ")" WS* "{" Body "}" WS* "else" WS* "{" WS* Body "}" WS*
+Body            ::= WS* (IfStmt | AssStmt | LockStmt | UnlockStmt)* WS*
 AssStmt         ::= Var " = " Expr ";" WS*
 LockStmt        ::= Var ".lock()" ";" WS*
 UnlockStmt      ::= Var ".unlock()" ";" WS*
@@ -33,7 +33,7 @@ type TLangAstType =
   'Program' |
   'Thread' |
   'VarDecl' |
-  'Stmt' |
+  //'Stmt' |
   'IfStmt' |
   'AssStmt' |
   'LockStmt' |
@@ -47,6 +47,7 @@ type TLangAstType =
 Grammar tests.
 */
 const parser = new Grammars.W3C.Parser(TLangGrammar);
+/*
 console.log(parser.getAST("5", "Value"));
 console.log(parser.getAST("x", "Var"));
 console.log(parser.getAST("volatile int x = 5;", "VarDecl"));
@@ -86,6 +87,7 @@ thread B {
     }
 }
 `,"Program"));
+*/
 
 /*
   Program order.
@@ -130,44 +132,50 @@ function computeProgramOrder(node: IToken, prev: PONode): PONode {
     }
     case 'Thread': {
       // .slice(1) ignore name
-      return node.children.slice(1).reduce<PONode>((prev, token) => {
+      const thread = {self: node, prev, next: []};
+      node.children.slice(1).reduce<PONode>((prev, token) => {
+	console.log((token as IToken).type);
         const next = computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
-      }, {self: node, prev, next: []});
+      }, thread);
+      return thread;
     }
     case 'IfStmt': {
       const cmpNode : PONode = {self: node.children[0], prev, next: []},
             thenNode : PONode = {self: node.children[1], prev: cmpNode, next: []},
             elseNode : PONode = {self: node.children[2], prev: cmpNode, next: []};
-
       cmpNode.next.push(thenNode);
       cmpNode.next.push(elseNode);
-
-      node.children[1].children.reduce<PONode>((prev, token) => {
+      console.log('HERE', cmpNode);
+      (thenNode.self as IToken).children.reduce<PONode>((prev, token) => {
         const next = computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
       }, thenNode);
-      node.children[2].children.reduce<PONode>((prev, token) => {
+      (elseNode.self as IToken).children.reduce<PONode>((prev, token) => {
         const next = computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
       }, elseNode);
       return cmpNode;
     }
+      //case 'Stmt':
     case 'VarDecl':
     case 'AssStmt':
     case 'LockStmt':
+    case 'Expr':
+    case 'Var':
     case 'UnlockStmt':
-    case 'Stmt':
       return {self: node, prev, next: []};
   }
+  console.log(node);
   throw new Error('Did not match!');
 }
 /*
 Program order tests.
 */
+/*
 console.log(computeProgramOrder(parser.getAST("volatile int x = 5;", "VarDecl"), {self: 'START', prev: null, next: []}));
 console.log(computeProgramOrder(parser.getAST(`
 thread A {
@@ -211,10 +219,68 @@ thread B {
     }
 }
 `,"Program"), {self: 'START', prev: null, next: []}));
-
-
+*/
 /*
   Render program order.
+*/
+
+
+function programOrderToDot(start: PONode): string {
+  console.log(start);
+  const current = start.next[0];
+  let output = 'digraph G {\n';
+  // No loops, we can just push
+  const vertices = new Array<string>(),
+        edges = new Array<string>();
+  const writer = (node: PONode, nodeIdx:number) => {
+    console.log((node.self as IToken).text);
+    const vidx = nodeIdx;
+    vertices.push(`node${nodeIdx} [label="${nodeIdx}"]`);
+    for(const child of node.next) {
+      const cid = nodeIdx+1;
+      edges.push(`node${vidx} -> node${cid}`);
+      nodeIdx = writer(child, cid);
+    }
+    return nodeIdx;
+  }
+  writer(current, 0);
+  for(const vertex of vertices) {
+    output += vertex+"\n";
+  }
+  for(const edge of edges) {
+    output += edge+"\n";
+  }
+  return output+"\n}";
+}
+
+/**
+   Test programOrderToDot
+ **/
+console.log(programOrderToDot(computeProgramOrder(parser.getAST(`
+volatile int x = 5;
+int y = 6;
+thread A {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+thread B {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+`,"Program"), {self: 'START', prev: null, next: []})));
+
+/*
+  PO gui
 */
 
 function Button(props: {text:string, onClick: () => void|Promise<void>}) {
@@ -226,9 +292,6 @@ function Button(props: {text:string, onClick: () => void|Promise<void>}) {
       props.onClick();
     }}>{props.text}</button>
   );
-}
-
-function renderProgramOrder(start: PONode) {
 }
 
 function ProgramOrderInput() {
