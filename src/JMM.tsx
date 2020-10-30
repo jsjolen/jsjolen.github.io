@@ -5,6 +5,10 @@ import { Graphviz } from 'graphviz-react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
+// TODO:
+// Add special rendering for Thread where edge is dotted in PO
+// Add special rendering for CmpExpr where edges denote true/false
+
 const TLangGrammar =
 `
 Program         ::= WS* VarDecl* WS* Thread* WS*
@@ -90,71 +94,104 @@ thread B {
 */
 
 /*
+  Semantic analysis
+  */
+
+function semanticAnalysis(program : IToken) : IToken {
+  if(program.children[0]?.type === 'Thread') {
+    throw new Error('Must define at least 1 variable');
+  }
+  const tidx = program.children.findIndex((v) => {
+    return v.type === 'Thread';
+  });
+  if(tidx < 0) {
+    throw new Error('Must define at least 1 thread');
+  }
+  return program;
+}
+
+/*
   Program order.
 */
 
-interface PONode {
-  self: IToken|string;
-  prev: PONode|null;
-  next: Array<PONode>;
+interface POVertex {
+  self: IToken;
+  prev: POVertex|null;
+  next: Array<POVertex>;
 }
 
 interface TLangToken extends IToken {
   type: TLangAstType;
 }
 
-function computeProgramOrder(node: IToken, prev: PONode): PONode {
-  switch(node.type as TLangAstType) {
-    case 'Program': {
-      const [varDecls, threadDecls] = node.children.reduce<[Array<IToken>,Array<IToken>]>(([varDecls, threadDecls], token)  => {
-	switch(token.type) {
-	    case 'VarDecl': {
-	      varDecls.push(token);
-	      return [varDecls, threadDecls];
-	    }
-	    case 'Thread': {
-	      threadDecls.push(token);
-	      return [varDecls, threadDecls];
-	    }
-	}
-	throw new Error('unreachable');
-      }, [[],[]]);
-      const lastVar = varDecls.reduce<PONode>((prev, token) => {
-        const next = computeProgramOrder(token, prev);
-        prev.next.push(next);
-        return next;
-      }, prev);
-      // Attach to each threadDecl
-      threadDecls.forEach((thread) => {
-	lastVar.next.push(computeProgramOrder(thread, lastVar));
-      });
-      return prev; // return start
+/*
+  cpo and _cpo depends a lot on mutable binding of next.
+  I think in Haskell we solve this by lazy evaluation for filling out that list.
+ */
+
+function computeProgramOrder(node: IToken): [POVertex, Array<POVertex>] {
+  const [varDecls, threadDecls] = node.children.reduce<[Array<IToken>,Array<IToken>]>(([varDecls, threadDecls], token)  => {
+    switch(token.type) {
+      case 'VarDecl': {
+	varDecls.push(token);
+	return [varDecls, threadDecls];
+      }
+      case 'Thread': {
+	threadDecls.push(token);
+	return [varDecls, threadDecls];
+      }
+      default: {
+        throw new Error('no way!');
+      }
     }
+  }, [[],[]]);
+
+  const mainThread = {self:varDecls[0], prev:null, next:[]};
+  let mainThreadControlPoint = varDecls.slice(1).reduce<POVertex>((prev, token) => {
+    const next = _computeProgramOrder(token, prev);
+    prev.next.push(next);
+    return next;
+  }, mainThread);
+  // Attach to each threadDecl
+  const threadComponents : Array<POVertex> = new Array();
+  threadDecls.forEach((thread) => {
+    const threadNode : POVertex = {self: thread, prev: null, next: []};
+    threadNode.next.push(_computeProgramOrder(thread, threadNode));
+    threadComponents.push(threadNode);
+
+    const startThreadVertex : POVertex = {self: thread, prev: mainThreadControlPoint, next: []};
+    mainThreadControlPoint.next.push(startThreadVertex);
+    mainThreadControlPoint = startThreadVertex;
+  });
+  return [mainThread, threadComponents]; // return start
+}
+
+function _computeProgramOrder(node: IToken, prev: POVertex): POVertex {
+  switch(node.type) {
     case 'Thread': {
+      // const thread = {self: node, prev, next: []};
+      const Stmt = {self: node.children[1], prev, next: []};
       // .slice(1) ignore name
-      const thread = {self: node, prev, next: []};
-      node.children.slice(1).reduce<PONode>((prev, token) => {
-	console.log((token as IToken).type);
-        const next = computeProgramOrder(token, prev);
+      node.children.slice(2).reduce<POVertex>((prev, token) => {
+        const next = _computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
-      }, thread);
-      return thread;
+      }, Stmt);
+      return Stmt;
     }
     case 'IfStmt': {
-      const cmpNode : PONode = {self: node.children[0], prev, next: []},
-            thenNode : PONode = {self: node.children[1], prev: cmpNode, next: []},
-            elseNode : PONode = {self: node.children[2], prev: cmpNode, next: []};
+      const cmpNode : POVertex = {self: node.children[0], prev, next: []},
+            thenNode : POVertex = {self: node.children[1], prev: cmpNode, next: []},
+            elseNode : POVertex = {self: node.children[2], prev: cmpNode, next: []};
       cmpNode.next.push(thenNode);
       cmpNode.next.push(elseNode);
-      console.log('HERE', cmpNode);
-      (thenNode.self as IToken).children.reduce<PONode>((prev, token) => {
-        const next = computeProgramOrder(token, prev);
+      (thenNode.self as IToken).children.reduce<POVertex>((prev, token) => {
+        const next = _computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
       }, thenNode);
-      (elseNode.self as IToken).children.reduce<PONode>((prev, token) => {
-        const next = computeProgramOrder(token, prev);
+      (elseNode.self as IToken).children.reduce<POVertex>((prev, token) => {
+        const next = _computeProgramOrder(token, prev);
         prev.next.push(next);
         return next;
       }, elseNode);
@@ -220,43 +257,139 @@ thread B {
 }
 `,"Program"), {self: 'START', prev: null, next: []}));
 */
+
+console.log(computeProgramOrder(parser.getAST(`
+volatile int x = 5;
+int y = 6;
+thread A {
+    y = 5;
+    if (x>5) {
+        y = 3;
+        y = 0;
+    }
+    else {
+       y = 2;
+       y = 0;
+    }
+}
+thread B {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+`,"Program")));
 /*
   Render program order.
 */
 
-
-function programOrderToDot(start: PONode): string {
-  console.log(start);
-  const current = start.next[0];
+function programOrderToDot([mainThreadComponent, threadComponents] : [POVertex, Array<POVertex>]): string {
   let output = 'digraph G {\n';
+  const [main, nextIdx] = programOrderComponentToDot(mainThreadComponent, 0);
+  const threads = threadComponents.reduce<[string, number]>(
+    ([out, nextIdx]: [string, number], vertex: POVertex): [string, number] => {
+      const [foo, bar] = programOrderComponentToDot(vertex, nextIdx)
+      return [out+foo, bar+1];
+    }, ['', nextIdx+1])[0];
+  return (
+    output +
+    main +
+    threads +
+    '\n}'
+  );
+}
+
+function programOrderComponentToDot(start: POVertex, startingIdx: number): [string, number] {
+  let output = '';
   // No loops, we can just push
   const vertices = new Array<string>(),
         edges = new Array<string>();
-  const writer = (node: PONode, nodeIdx:number) => {
-    console.log((node.self as IToken).text);
-    const vidx = nodeIdx;
-    vertices.push(`node${nodeIdx} [label="${nodeIdx}"]`);
-    for(const child of node.next) {
-      const cid = nodeIdx+1;
-      edges.push(`node${vidx} -> node${cid}`);
-      nodeIdx = writer(child, cid);
+  const writer = (node: POVertex, nodeIdx:number) => {
+    let vidx = nodeIdx;
+    // Add self-vertex if applicable
+    if(node.self.type === 'Thread') {
+      vertices.push(`node${nodeIdx} [label="Thread ${node.self.children[0].text} start" shape=plaintext]`);
+    } else if(node.self.type === 'Body') {
+      // Add first stmt in body
+      vertices.push(`node${nodeIdx} [label="${node.self.children[0].text}" shape=plaintext]`);
+    } else {
+      vertices.push(`node${nodeIdx} [label="${(node.self as IToken).text.trim()}" shape=plaintext]`);
+    }
+    // Add child edges, etc.
+    if(node.self.type === 'CmpExpr') {
+      const thenBranch = nodeIdx+1;
+      edges.push(`node${vidx} -> node${thenBranch} [label="true"]`);
+      nodeIdx = writer(node.next[0], thenBranch);
+      const elseBranch = nodeIdx+1;
+      edges.push(`node${vidx} -> node${elseBranch} [label="false"]`);
+      nodeIdx = writer(node.next[1], elseBranch);
+    } else if(node.self.type === 'Body') {
+      // Skip first child
+      for(const child of node.next.splice(1)) {
+	const cid = nodeIdx+1;
+	if(child.self.type === 'Thread') {
+	  edges.push(`node${vidx} -> node${cid}`);
+	} else {
+	  edges.push(`node${vidx} -> node${cid}`);
+	}
+	nodeIdx = writer(child, cid);
+      }
+    }
+    else {
+      for(const child of node.next) {
+	const cid = nodeIdx+1;
+	if(child.self.type === 'Thread') {
+	  edges.push(`node${vidx} -> node${cid}`);
+	} else {
+	  edges.push(`node${vidx} -> node${cid}`);
+	}
+	nodeIdx = writer(child, cid);
+      }
     }
     return nodeIdx;
   }
-  writer(current, 0);
+  const nodeIdx = writer(start, startingIdx);
   for(const vertex of vertices) {
     output += vertex+"\n";
   }
   for(const edge of edges) {
     output += edge+"\n";
   }
-  return output+"\n}";
+  return [output, nodeIdx];
 }
 
 /**
    Test programOrderToDot
  **/
 console.log(programOrderToDot(computeProgramOrder(parser.getAST(`
+volatile int x = 5;
+int y = 6;
+thread A {
+    y = 5;
+    if (x>5) {
+        y = 3;
+        y = 0;
+}
+    else {
+       y = 2;
+y = 0;
+    }
+}
+thread B {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+`,"Program"))));
+
+console.log(computeProgramOrder(parser.getAST(`
 volatile int x = 5;
 int y = 6;
 thread A {
@@ -277,7 +410,8 @@ thread B {
        y = 2;
     }
 }
-`,"Program"), {self: 'START', prev: null, next: []})));
+`,"Program")));
+
 
 /*
   PO gui
