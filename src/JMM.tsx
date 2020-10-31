@@ -1,4 +1,4 @@
-import React, { useState, FunctionComponent, ReactNode } from 'react';
+import React, { useState, FunctionComponent, ReactNode, useRef } from 'react';
 import { Grammars, IToken } from 'ebnf';
 import { Graphviz } from 'graphviz-react';
 
@@ -416,6 +416,29 @@ thread B {
 /*
   PO gui
 */
+const initProgram = `
+volatile int x = 5;
+int y = 6;
+thread A {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+thread B {
+    y = 5;
+    if (x>5) {
+        y = 3;
+    }
+    else {
+       y = 2;
+    }
+}
+`;
+const initGraph = programOrderToDot(computeProgramOrder(parser.getAST(initProgram,'Program')));
 
 function Button(props: {text:string, onClick: () => void|Promise<void>}) {
   const [state, setState] = useState({active:false});
@@ -429,17 +452,23 @@ function Button(props: {text:string, onClick: () => void|Promise<void>}) {
 }
 
 function ProgramOrderInput() {
-  const [state, setState] = useState({dot:"", lastRender:"digraph G { a -> b }"});
-  const handleChange = (event: any) => setState({dot: event.target.value, lastRender: state.lastRender});
+  const [lastRender, setLastRender] = useState(initGraph);
+  const textAreaRef  = useRef<HTMLTextAreaElement>(null);
   return (
     <div className="centered-limited" style={{display: "flex", flexDirection:"column"}}>
       <div style={{display: "flex", flexDirection:"row"}}>
-        <textarea rows={20} cols={20} value={state.dot} onChange={handleChange} />
-        <Graphviz dot={state.lastRender}/>
+        <textarea ref={textAreaRef} rows={20} cols={20} value={initProgram}/>
+        <Graphviz dot={lastRender}/>
       </div>
       <Button text="Render program order"
               onClick={() => {
-		setState({dot:state.dot, lastRender:state.dot});
+		try {
+		  if(textAreaRef.current) {
+		    const graph = programOrderToDot(computeProgramOrder(parser.getAST(textAreaRef.current.value,'Program')));
+		    setLastRender(graph);
+		  }
+		} catch(e) {
+		}
 	      }}/>
     </div>
   );
@@ -454,11 +483,11 @@ function ProgramOrderInput() {
 */
 
 export function Grammar() {
-  return <p className="centered-limited">{TLangGrammar}</p>;
+  return <pre className="centered-limited"> <code>{TLangGrammar}</code> </pre>;
 }
 
 function Program(props: {children: ReactNode}) {
-  return <p className="centered-limited"> {props.children} </p>;
+  return <pre className="centered-limited"> <code className="centered-limited"> {props.children} </code> </pre>;
 }
 
 export function JMM() {
@@ -506,7 +535,6 @@ export function JMM() {
     On top of regular actions there are also synchronization actions.
     What follows is a list of the actions we will consider, then we will consider synchronization order.
     </p>
-    
     <h3 className="centered-limited">Synchronization order</h3>
     <h3 className="centered-limited">Happens Before order</h3>
     TODO
