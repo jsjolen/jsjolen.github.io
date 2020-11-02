@@ -12,13 +12,13 @@ import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 const TLangGrammar =
 `
 Program         ::= WS* VarDecl* WS* Thread* WS*
-Thread          ::= WS* "thread " WS* Var WS* "{" WS* (IfStmt | AssStmt | LockStmt | UnlockStmt)* WS* "}" WS*
+Thread          ::= WS* "thread " WS* Var WS* "{" WS* STMT* WS* "}" WS*
 VarDecl         ::= IntDecl | VolatileIntDecl | LockDecl
 IntDecl         ::= "int" WS* Var " = " Expr ";" WS*
 VolatileIntDecl ::= "volatile int" WS* Var " = " Expr ";" WS*
 LockDecl        ::= "lock" WS* Var ";" WS*
 IfStmt          ::= WS* "if" WS* "(" WS* CmpExpr WS* ")" WS* "{" Body "}" WS* "else" WS* "{" WS* Body "}" WS*
-Body            ::= WS* (IfStmt | AssStmt | LockStmt | UnlockStmt)* WS*
+Body            ::= WS* STMT* WS*
 AssStmt         ::= Var " = " Expr ";" WS*
 LockStmt        ::= Var ".lock()" ";" WS*
 UnlockStmt      ::= Var ".unlock()" ";" WS*
@@ -29,6 +29,7 @@ CmpExpr         ::= Expr "==" Expr | Expr ">" Expr
 Var             ::= ([a-z]|[A-Z])+
 Value           ::= NUMBER
 
+STMT            ::= IfStmt | AssStmt | LockStmt | UnlockStmt
 NUMBER          ::= "-"? ("0" | [1-9] [0-9]*) ("." [0-9]+)? (("e" | "E") ( "-" | "+" )? ("0" | [1-9] [0-9]*))?
 WS              ::= [#x20#x09#x0A#x0D]+
 `;
@@ -108,6 +109,55 @@ function semanticAnalysis(program : IToken) : IToken {
     throw new Error('Must define at least 1 thread');
   }
   return program;
+}
+
+interface TypeInfo {
+  isVolatile: boolean;
+  type: 'int'|'lock';
+}
+
+
+/*
+IntDecl         ::= "int" WS* Var " = " Expr ";" WS*
+VolatileIntDecl ::= "volatile int" WS* Var " = " Expr ";" WS*
+LockDecl        ::= "lock" WS* Var ";" WS*
+ */
+function typeEnv(program: IToken): Map<string, TypeInfo> {
+  if(program.type !== 'Program') {
+    throw new Error('Can only find environment of whole program');
+  }
+  const varDecls = program.children.reduce<Array<IToken>>((varDecls, token)  => {
+    switch(token.type) {
+      case 'VarDecl': {
+	varDecls.push(token);
+	return varDecls;
+      }
+      default: {
+	return varDecls;
+      }
+    }
+  }, []);
+
+  const m = new Map<string, TypeInfo>();
+  for(const varDecl of varDecls) {
+    const decl = varDecl.children[0];
+    console.log(decl);
+    switch(decl.type) {
+      case 'IntDecl': {
+	m.set(decl.children[0].text, {isVolatile:false, type:'int'});
+	break;
+      }
+      case 'VolatileIntDecl': {
+	m.set(decl.children[0].text, {isVolatile:true, type:'int'});
+	break;
+      }
+      case 'LockDecl': {
+	m.set(decl.children[0].text, {isVolatile:true, type:'lock'});
+	break;
+      }
+    }
+  }
+  return m;
 }
 
 /*
@@ -412,7 +462,6 @@ thread B {
 }
 `,"Program")));
 
-
 /*
   PO gui
 */
@@ -464,7 +513,7 @@ function ProgramOrderInput() {
               onClick={() => {
 		try {
 		  if(textAreaRef.current) {
-		    const graph = programOrderToDot(computeProgramOrder(parser.getAST(textAreaRef.current.value,'Program')));
+		    const graph = programOrderToDot(computeProgramOrder(semanticAnalysis(parser.getAST(textAreaRef.current.value,'Program'))));
 		    setLastRender(graph);
 		  }
 		} catch(e) {
@@ -477,6 +526,13 @@ function ProgramOrderInput() {
 /*
   Synchronization Actions.
 */
+
+interface SAVertex {
+}
+
+function synchronizationOrder(program: IToken): Array<SAVertex> {
+  return [];
+}
 
 /*
   Rendering.
