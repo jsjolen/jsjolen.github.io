@@ -23,7 +23,7 @@ function App() {
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/">Home</Link></li>
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/relsymwasm">MSc thesis</Link></li>
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/bsc">BSc thesis</Link></li>
-        <li className="pure-menu-item"><Link className="pure-menu-link" to="/jmm">JMM</Link></li>
+        <li className="pure-menu-item"><Link className="pure-menu-link" to="/jmm">JMM (WIP)</Link></li>
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/structuraltyping">Structural typing</Link></li>
       </ul>
       <Switch>
