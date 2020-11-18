@@ -12,13 +12,13 @@ import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 const TLangGrammar =
 `
 Program         ::= WS* VarDecl* WS* Thread* WS*
-Thread          ::= WS* "thread " WS* Var WS* "{" WS* STMT* WS* "}" WS*
+Thread          ::= WS* "thread " WS* Var WS* "{" WS* (IfStmt | AssStmt | LockStmt | UnlockStmt)* WS* "}" WS*
 VarDecl         ::= IntDecl | VolatileIntDecl | LockDecl
 IntDecl         ::= "int" WS* Var " = " Expr ";" WS*
 VolatileIntDecl ::= "volatile int" WS* Var " = " Expr ";" WS*
 LockDecl        ::= "lock" WS* Var ";" WS*
 IfStmt          ::= WS* "if" WS* "(" WS* CmpExpr WS* ")" WS* "{" Body "}" WS* "else" WS* "{" WS* Body "}" WS*
-Body            ::= WS* STMT* WS*
+Body            ::= WS* (IfStmt | AssStmt | LockStmt | UnlockStmt)* WS*
 AssStmt         ::= Var " = " Expr ";" WS*
 LockStmt        ::= Var ".lock()" ";" WS*
 UnlockStmt      ::= Var ".unlock()" ";" WS*
@@ -29,9 +29,31 @@ CmpExpr         ::= Expr "==" Expr | Expr ">" Expr
 Var             ::= ([a-z]|[A-Z])+
 Value           ::= NUMBER
 
-STMT            ::= IfStmt | AssStmt | LockStmt | UnlockStmt
 NUMBER          ::= "-"? ("0" | [1-9] [0-9]*) ("." [0-9]+)? (("e" | "E") ( "-" | "+" )? ("0" | [1-9] [0-9]*))?
 WS              ::= [#x20#x09#x0A#x0D]+
+`;
+
+const presentableGrammar =
+`
+Program         ::=  VarDecl*  Thread*
+Thread          ::=  "thread "  Var  "{"  (IfStmt | AssStmt | LockStmt | UnlockStmt)*  "}"
+VarDecl         ::= IntDecl | VolatileIntDecl | LockDecl
+IntDecl         ::= "int"  Var " = " Expr ";"
+VolatileIntDecl ::= "volatile int"  Var " = " Expr ";"
+LockDecl        ::= "lock"  Var ";"
+IfStmt          ::=  "if"  "("  CmpExpr  ")"  "{" Body "}"  "else"  "{"  Body "}"
+Body            ::=  (IfStmt | AssStmt | LockStmt | UnlockStmt)*
+AssStmt         ::= Var " = " Expr ";"
+LockStmt        ::= Var ".lock()" ";"
+UnlockStmt      ::= Var ".unlock()" ";"
+
+Expr            ::= Var | Value | CmpExpr | AddExpr
+AddExpr         ::= Expr "+" Expr
+CmpExpr         ::= Expr "==" Expr | Expr ">" Expr
+Var             ::= ([a-z]|[A-Z])+
+Value           ::= NUMBER
+
+NUMBER          ::= "-"? ("0" | [1-9] [0-9]*) ("." [0-9]+)? (("e" | "E") ( "-" | "+" )? ("0" | [1-9] [0-9]*))?
 `;
 
 type TLangAstType =
@@ -111,6 +133,7 @@ function semanticAnalysis(program : IToken) : IToken {
   return program;
 }
 
+type TypeEnv = Map<string, TypeInfo>;
 interface TypeInfo {
   isVolatile: boolean;
   type: 'int'|'lock';
@@ -122,7 +145,7 @@ IntDecl         ::= "int" WS* Var " = " Expr ";" WS*
 VolatileIntDecl ::= "volatile int" WS* Var " = " Expr ";" WS*
 LockDecl        ::= "lock" WS* Var ";" WS*
  */
-function typeEnv(program: IToken): Map<string, TypeInfo> {
+function typeEnv(program: IToken): TypeEnv {
   if(program.type !== 'Program') {
     throw new Error('Can only find environment of whole program');
   }
@@ -203,7 +226,7 @@ function computeProgramOrder(node: IToken): [POVertex, Array<POVertex>] {
     return next;
   }, mainThread);
   // Attach to each threadDecl
-  const threadComponents : Array<POVertex> = new Array();
+  const threadComponents : POVertex[] = new Array();
   threadDecls.forEach((thread) => {
     const threadNode : POVertex = {self: thread, prev: null, next: []};
     threadNode.next.push(_computeProgramOrder(thread, threadNode));
@@ -525,12 +548,77 @@ function ProgramOrderInput() {
 
 /*
   Synchronization Actions.
+  Requires recurring inside of Exprs to find writes/reads.
 */
 
-interface SAVertex {
+interface SynchAction {
+  origin: IToken;
+  info: SynchActionInfo;
+}
+interface SynchActionInfo {
+  actionType: 'volread'|'volwrite'|'lock'|'unlock';
 }
 
-function synchronizationOrder(program: IToken): Array<SAVertex> {
+function parseSynchAction(node: IToken, env: TypeEnv): Set<SynchAction> {
+  switch(node.type) {
+    case 'LockStmt': {
+      const x : SynchAction = {origin: node, info: { actionType: 'lock' }};
+      return new Set([x]);
+    }
+    case 'UnlockStmt': {
+      const x : SynchAction = {origin: node, info: { actionType: 'unlock' }};
+      return new Set([x]);
+    }
+    case 'AssStmt': {
+      const assignInfo = env.get(node.children[0].text);
+      const sas: Set<SynchAction> = parseSynchActionExpr(node.children[1].children[0], env);;
+      if(assignInfo && assignInfo.isVolatile) {
+	sas.add({origin: node, info: { actionType: 'volwrite' }});
+      }
+      return sas;
+    }
+  }
+  throw new Error('unreachable');
+}
+
+/**
+Expr            ::= Var | Value | CmpExpr | AddExpr
+AddExpr         ::= Expr "+" Expr
+CmpExpr         ::= Expr "==" Expr | Expr ">" Expr
+Var             ::= ([a-z]|[A-Z])+
+Value           ::= NUMBER
+
+**/
+function union<T>(a: Set<T>, b: Set<T>): Set<T> {
+  a.forEach((x) => {
+    b.add(x);
+  });
+  return b;
+}
+
+function parseSynchActionExpr(node: IToken, env: TypeEnv): Set<SynchAction> {
+  switch(node.type) {
+      case 'Var': {
+	if(env.get(node.text)?.isVolatile) {
+	  const x : SynchAction = {origin: node,info: {actionType: 'volread'}};
+	  return new Set([x]);
+	} else {
+	  return new Set();
+	}
+      }
+    case 'CmpExpr':
+    case 'AddExpr': {
+      return union(parseSynchActionExpr(node.children[0], env),
+		   parseSynchActionExpr(node.children[1], env));
+    }
+    case 'Value': {
+      return new Set();
+    }
+  }
+  throw new Error('Unreachable');
+}
+
+function synchronizationOrder(program: IToken): Array<SynchAction> {
   return [];
 }
 
@@ -539,7 +627,7 @@ function synchronizationOrder(program: IToken): Array<SAVertex> {
 */
 
 export function Grammar() {
-  return <pre className="centered-limited"> <code>{TLangGrammar}</code> </pre>;
+  return <pre className="centered-limited"> <code>{presentableGrammar}</code> </pre>;
 }
 
 function Program(props: {children: ReactNode}) {
