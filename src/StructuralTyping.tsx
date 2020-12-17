@@ -122,7 +122,7 @@ export function StructuralTyping() {
       <h2 className="center">Structural subtyping</h2>
       <h3 className="centered-limited">Introduction</h3>
       <p className="centered-limited">
-      I was bored one day and thought about structural typing. Specifically, how does the type checker produce a proof that some type <i>a</i> is a subtype of some other type <i>b</i>?
+      Consider structural typing. Specifically, how does the type checker produce a proof that some type <i>a</i> is a subtype of some other type <i>b</i>?
       In a nominal type system this is as easy as checking if the definition of <i>a</i> mentions that it extends <i>b</i>.
       In a structural one it becomes more complex, as we must prove that <i>a</i> has the same structure as <i>b</i>.
       This is slightly tricky when mutually recursive structures are considered.
@@ -168,6 +168,16 @@ export function StructuralTyping() {
       <SyntaxHighlighter className="centered-limited" language="haskell" style={docco}>
        {hsCode}
       </SyntaxHighlighter>
+      <h3 className="centered-limited">Subtyping of functions</h3>
+      <p className="centered-limited">
+      Let us expand this subtyping relation to functions.
+      We will consider single-argument functions, in other words our types are expanded thusly:
+      <ul>
+      <li> (<i>a</i> → <i>b</i>) </li>
+      </ul>
+      And (<i>a</i> → <i>b</i>) {"≤"} (<i>a{"'"}</i> → <i>b{"'"}</i>) iff <i>a{"'"}</i> {"≤"} <i>a</i> and <i>b</i> {"≤"} <i>b{"'"}</i>.
+      In other words a function f which is a subtype of g can accept anything that g can accept and possibly more but will return at most what g may return.
+      </p>
 </div>
   );
 }
