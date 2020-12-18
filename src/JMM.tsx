@@ -330,7 +330,7 @@ thread B {
 }
 `,"Program"), {self: 'START', prev: null, next: []}));
 */
-
+/*
 console.log(computeProgramOrder(parser.getAST(`
 volatile int x = 5;
 int y = 6;
@@ -355,6 +355,7 @@ thread B {
     }
 }
 `,"Program")));
+*/
 /*
   Render program order.
 */
@@ -436,7 +437,8 @@ function programOrderComponentToDot(start: POVertex, startingIdx: number): [stri
 
 /**
    Test programOrderToDot
- **/
+**/
+/*
 console.log(programOrderToDot(computeProgramOrder(parser.getAST(`
 volatile int x = 5;
 int y = 6;
@@ -484,7 +486,7 @@ thread B {
     }
 }
 `,"Program")));
-
+*/
 /*
   PO gui
 */
@@ -510,7 +512,6 @@ thread B {
     }
 }
 `;
-const initGraph = programOrderToDot(computeProgramOrder(parser.getAST(initProgram,'Program')));
 
 function Button(props: {text:string, onClick: () => void|Promise<void>}) {
   const [state, setState] = useState({active:false});
@@ -524,6 +525,7 @@ function Button(props: {text:string, onClick: () => void|Promise<void>}) {
 }
 
 function ProgramOrderInput() {
+  const initGraph = programOrderToDot(computeProgramOrder(parser.getAST(initProgram,'Program')));
   const [lastRender, setLastRender] = useState(initGraph);
   const textAreaRef  = useRef<HTMLTextAreaElement>(null);
   return (
