@@ -119,7 +119,6 @@ isSubtypeOf a b seenA seenB = (False, seenA, seenB)
 export function StructuralTyping() {
   return (
     <div>
-      <h2 className="center">Structural subtyping</h2>
       <h3 className="centered-limited">Introduction</h3>
       <p className="centered-limited">
       Consider structural typing. Specifically, how does the type checker produce a proof that some type <i>a</i> is a subtype of some other type <i>b</i>?

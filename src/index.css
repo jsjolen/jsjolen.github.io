@@ -30,3 +30,7 @@ ul {
 ul.empty {
     list-style-type: ' ';
 }
+
+figure figcaption {
+    text-align: center;
+}
