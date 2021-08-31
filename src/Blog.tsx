@@ -2,7 +2,9 @@ import React, { FunctionComponent, ReactElement } from 'react';
 import { gatPost } from './blogposts/gat';
 import { StructuralTyping } from './StructuralTyping';
 import { AppleSignInMock } from './AppleSignInMock';
+import { AnalysisForFree } from './AnalysisForFree';
 import { TranspilerHotTake } from './TranspilerHotTake';
+import { PraiseOfGo } from './PraiseOfGo';
 
 import BlogPostImage from './blogpost.png';
 
@@ -92,12 +94,27 @@ pushPost({
   ]
 });
 */
+/*
+pushPost({
+    title: "When will we collect a set of portable of analysises?",
+    date: '2021-04-16',
+    id: 'analysis-for-free',
+    content: AnalysisForFree(),
+});
 
 pushPost({
   title:'People have realised that the word transpiler is useless',
   date:'2021-01-27',
   id:'transpiler-not-good',
   content: TranspilerHotTake()
+});
+*/
+
+pushPost({
+  title: 'In praise of Go',
+  date:'2021-08-31',
+  id:'praise-go',
+  content: PraiseOfGo()
 });
 
 pushPost({

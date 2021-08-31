@@ -531,7 +531,7 @@ function ProgramOrderInput() {
   return (
     <div className="centered-limited" style={{display: "flex", flexDirection:"column"}}>
       <div style={{display: "flex", flexDirection:"row"}}>
-        <textarea ref={textAreaRef} rows={20} cols={20} value={initProgram}/>
+        <textarea ref={textAreaRef} rows={20} cols={20} defaultValue={initProgram}/>
         <Graphviz dot={lastRender}/>
       </div>
       <Button text="Render program order"
