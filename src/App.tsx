@@ -3,7 +3,7 @@ import {
   Route,
   Link,
   HashRouter,
-  Switch
+  Routes
 } from 'react-router-dom';
 
 import { RelSymWasm } from './RelSymWasm';
@@ -15,7 +15,7 @@ import './pure.css';
 
 function App() {
   useEffect(() => {
-    document.title = 'A page.';
+    document.title = 'Johan Sjölén\'s web zone of cool';
   });
   return (
     <HashRouter>
@@ -26,13 +26,13 @@ function App() {
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/bsc">BSc thesis</Link></li>
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/jmm">JMM (WIP)</Link></li>
       </ul>
-      <Switch>
-       <Route exact path="/relsymwasm" component={RelSymWasm}/>
-       <Route exact path="/blog/:id" component={Blog}/>
-       <Route exact path="/bsc" component={BSc}/>
-       <Route exact path="/jmm" component={JMM}/>
-       <Route exact path="/" component={Home}/>
-      </Switch>
+      <Routes>
+       <Route path="/relsymwasm" element={<RelSymWasm />}/>
+       <Route path="/blog/:id" element={< Blog />}/>
+       <Route path="/bsc" element={<BSc />}/>
+       <Route path="/jmm" element={<JMM />}/>
+       <Route path="/" element={<Home />}/>
+      </Routes>
     </HashRouter>
   );
 }

@@ -22,6 +22,9 @@ export function Home() {
       On this page you will find any work I've done pertaining to these topics.
       You may contact me at: johan.borglin.sjolen at gmail dot com.
       </p>
+      <p className="centered-limited"> I am currently employed by Oracle as part of the Java Platform Group. I work on the Hotspot runtime, it's a lot of fun and really cool! Oh, and also: Any views and opinions I write here are my own and do not represent my employer.
+      </p>
+      <p className="centered-limited"> Thanks for reading, cheers! </p>
     </div>
   );
 }
