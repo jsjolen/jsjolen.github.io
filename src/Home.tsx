@@ -22,6 +22,7 @@ export function Home() {
       <p className="centered-limited">
       I promise you, these won't be the only things I'll talk about on this page.
       You may contact me at: johan.borglin.sjolen at gmail dot com.
+      I can also be found at FOSSTodon under the handle jsjolen.
       </p>
       <p className="centered-limited"> I am currently employed by Oracle as part of the Java Platform Group. I work on the Hotspot runtime, it's a lot of fun and really cool! Oh, and also: Any views and opinions I write here are my own and do not represent my employer.
       </p>
