@@ -1,5 +1,6 @@
 import React, { FunctionComponent, ReactElement } from 'react';
 import { gatPost } from './blogposts/gat';
+import { backAtItPost } from './blogposts/back-at-it';
 import { StructuralTyping } from './StructuralTyping';
 import { AnalysisForFree } from './AnalysisForFree';
 import BlogPostImage from './blogpost.png';
@@ -49,6 +50,7 @@ pushPost({
 
 
 pushPost(gatPost);
+pushPost(backAtItPost);
 
 pushPost({
   title: "How I run this site.",

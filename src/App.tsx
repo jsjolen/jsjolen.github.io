@@ -6,9 +6,8 @@ import {
   Routes
 } from 'react-router-dom';
 
-import { RelSymWasm } from './RelSymWasm';
-import { BSc } from './BSc';
 import { Home } from './Home';
+import { Studies } from './Studies';
 import { JMM } from './JMM';
 import { Blog } from './Blog';
 import './pure.css';
@@ -22,14 +21,12 @@ function App() {
       <ul className="pure-menu-horizontal">
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/">Home</Link></li>
         <li className="pure-menu-item"><Link className="pure-menu-link" to="/blog/all">Blog</Link></li>
-        <li className="pure-menu-item"><Link className="pure-menu-link" to="/relsymwasm">MSc thesis</Link></li>
-        <li className="pure-menu-item"><Link className="pure-menu-link" to="/bsc">BSc thesis</Link></li>
-        <li className="pure-menu-item"><Link className="pure-menu-link" to="/jmm">JMM (WIP)</Link></li>
+        <li className="pure-menu-item"><Link className="pure-menu-link" to="/studies">My uni stuff</Link></li>
+        <li className="pure-menu-item"><Link className="pure-menu-link" to="/jmm">JMM (will never finish)</Link></li>
       </ul>
       <Routes>
-       <Route path="/relsymwasm" element={<RelSymWasm />}/>
        <Route path="/blog/:id" element={< Blog />}/>
-       <Route path="/bsc" element={<BSc />}/>
+       <Route path="/studies" element={<Studies />}/>
        <Route path="/jmm" element={<JMM />}/>
        <Route path="/" element={<Home />}/>
       </Routes>
