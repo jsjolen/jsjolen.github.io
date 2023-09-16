@@ -41,6 +41,8 @@ const pushPost = (post:{title:string, date:string, content: any, id:string}) => 
   idToPost.set(post.id, post);
 };
 
+pushPost(backAtItPost);
+
 pushPost({
   title:'Structural subtyping',
   date:'2021-01-01',
@@ -50,7 +52,6 @@ pushPost({
 
 
 pushPost(gatPost);
-pushPost(backAtItPost);
 
 pushPost({
   title: "How I run this site.",
@@ -81,7 +82,10 @@ export const Blog = () => {
     return (
       <div>
 	<h1 className="center">Blog</h1>
-	{posts.map(Post)}
+	    {posts
+          .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+          .reverse()
+          .map(Post)}
       </div>
     );
   } else {

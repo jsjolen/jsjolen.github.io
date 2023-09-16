@@ -7,7 +7,7 @@ export function Studies() {
     <p className="centered-limited">
     This is some of the stuff that I did while still at university. I was fond of my university studies, so it's nice to reminisce :-).
    </p>
-  < BSc \>
-  < RelSymWasm \>
+  < BSc />
+  < RelSymWasm />
   </div>
 };
