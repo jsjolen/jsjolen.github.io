@@ -24,3 +24,7 @@ yarn-error.log*
 
 package-lock.json
 yarn.lock
+
+*~undo-tree~*
+.gitignore.kate-swp
+.log/*
