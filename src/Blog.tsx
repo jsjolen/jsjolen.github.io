@@ -1,8 +1,7 @@
 import React, { FunctionComponent, ReactElement } from 'react';
 import { gatPost } from './blogposts/gat';
 import { backAtItPost } from './blogposts/back-at-it';
-import { StructuralTyping } from './StructuralTyping';
-import { AnalysisForFree } from './AnalysisForFree';
+import { structuralTypingPost } from './StructuralTyping';
 import BlogPostImage from './blogpost.png';
 
 import {
@@ -33,48 +32,35 @@ const FootnoteRef = (props:{id:string, num:number}) => {
   return <a>[{props.num}]</a>
 };
 
-const posts: {title:string, date:string, content: any, id:string}[] = [];
-const idToPost: Map<string, any> = new Map();
-
-const pushPost = (post:{title:string, date:string, content: any, id:string}) => {
-  posts.push(post);
-  idToPost.set(post.id, post);
-};
-
-pushPost(backAtItPost);
-
-pushPost({
-  title:'Structural subtyping',
-  date:'2021-01-01',
-  id:'struc-sub-type',
-  content: StructuralTyping()
-});
-
-
-pushPost(gatPost);
-
-pushPost({
-  title: "How I run this site.",
-  date:"2020-12-18",
-  id:"how-i-run-this-site",
-  content: [
-    <p className="centered-limited">
-      This is the KISS version of running a personal site.
-      I got my css from pure-css and I run everything as a React app using gh-pages and react-scripts.
-      Every blog post is a small program which pushes a post onto an array which is then rendered by a function (I use React Hooks).
-      I treat the entire website as a program where I run whatever I want.
-      There are essentially no static assets.
-      I can whole-heartedly recommend this as a no-frills version of writing and hosting a personal site.
+let posts: {title:string, date:string, content: any, id:string}[] = [
+  backAtItPost,
+  structuralTypingPost,
+  gatPost,
+  {
+    title: "How I run this site.",
+    date: "2020-12-18",
+    id: "how-i-run-this-site",
+    content: [
+      <p className="centered-limited">
+        This is the KISS version of running a personal site.
+        I got my css from pure-css and I run everything as a React app using gh-pages and react-scripts.
+        Every blog post is a small program which pushes a post onto an array which is then rendered by a function (I use React Hooks).
+        I treat the entire website as a program where I run whatever I want.
+        There are essentially no static assets.
+        I can whole-heartedly recommend this as a no-frills version of writing and hosting a personal site.
     </p>,
       <p className="centered-limited">
-      Unfortunately the site takes an absurd amount of memory.
-      Loading the site can take a while, according to Firefox almost 2MB of compressed JavaScript is sent over the wire.
-      I assume that the majority of this is the libraries which I import.
+        Unfortunately the site takes an absurd amount of memory.
+        Loading the site can take a while, according to Firefox almost 2MB of compressed JavaScript is sent over the wire.
+        I assume that the majority of this is the libraries which I import.
       </p>,
-    <img style={{display: "block"}} className="centered-limited" src={BlogPostImage} alt="How I wrote this blog post">
-    </img>
-  ]
-})
+      <img style={{ display: "block" }} className="centered-limited" src={BlogPostImage} alt="How I wrote this blog post">
+      </img>
+    ]
+  }
+];
+let idToPost: Map<string, any> = new Map();
+posts.map((post) => idToPost.set(post.id, post));
 
 export const Blog = () => {
   const { id } = useParams<{id:string}>();

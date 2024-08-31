@@ -116,7 +116,7 @@ isSubtypeOf (Null ida) (Null idb) seenA seenB =
 isSubtypeOf a b seenA seenB = (False, seenA, seenB)
 `;
 
-export function StructuralTyping() {
+function StructuralTyping() {
   return (
     <div>
       <h3 className="centered-limited">Introduction</h3>
@@ -180,3 +180,10 @@ export function StructuralTyping() {
 </div>
   );
 }
+
+export const structuralTypingPost = {
+  title:'Structural subtyping',
+  date:'2021-01-01',
+  id:'struc-sub-type',
+  content: StructuralTyping()
+};

@@ -5,7 +5,7 @@ import { RelSymWasm } from './RelSymWasm';
 export function Studies() {
   return <div>
     <p className="centered-limited">
-    This is some of the stuff that I did while still at university. I was fond of my university studies, so it's nice to reminisce :-).
+    This is some of the stuff that I did while still at university. I am fond of my university studies, so it's nice to reminisce.
    </p>
   < BSc />
   < RelSymWasm />

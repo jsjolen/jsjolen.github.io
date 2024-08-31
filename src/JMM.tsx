@@ -639,6 +639,7 @@ function Program(props: {children: ReactNode}) {
 export function JMM() {
   return (
     <div>
+    <h1 className="center"> This was meant to be an interactive explorer of the Java Memory Model. It ran out of steam. I'm keeping it for fun.</h1>
     <h2 className="center">Interactive Java Memory Model</h2>
     <h3 className="centered-limited">Introduction</h3>
     <p className="centered-limited">
